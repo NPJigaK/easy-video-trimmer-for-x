@@ -3,7 +3,7 @@
     "name": "Easy Video Trimmer for X.com",
     "version": "0.0.1.1",
     "version_name": "0.0.1-alpha.1",
-    "description": "Easy Video Trimmer for X.com — Alpha Build",
+    "description": "Easy Video Trimmer for X.com — Alpha Version",
     "icons": {
         "32": "icons/32.png",
         "48": "icons/48.png",
@@ -29,7 +29,7 @@
             "js": [
                 "lib/ffmpeg/umd/ffmpeg.js",
                 "lib/ffmpeg/util.js",
-                "js/options.js",
+                "js/ffmpeg-controller.js",
                 "js/inject-button.js"
             ]
         }

@@ -1,11 +1,13 @@
-/* 全体のベーススタイル（X.com のモダン・ミニマルなデザインをイメージ） */
+/* ================================================================
+   1. レイアウトのベース
+   ================================================================ */
+/* ページ全体を中央寄せ・ダークテーマで統一 */
 html,
 body {
   margin: 0;
   padding: 0;
   font-family: sans-serif;
-  background-color: #15202b;
-  /* 深いネイビー／ブラック */
+  background-color: #15202b; /* 深いネイビー／ブラック (X.com の背景に近い) */
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -19,22 +21,25 @@ h1 {
   margin-top: 20px;
 }
 
+/* メイン UI。動画が選択されるまで非表示 */
 #main-extension-container {
-  /* デフォオルト */
   display: none;
 }
 
-/* 動画プレイヤー（中央寄せ） */
+/* ================================================================
+   2. 動画プレイヤー & タイムライン
+   ================================================================ */
+/* Video.js プレイヤーを中央配置し、幅を 640px に制限 */
 .video-container {
   max-width: 640px;
   margin: 20px auto;
 }
 
-/* タイムライン（ズームウィンドウ）のスタイル */
+/* --- タイムライン背景 (ズームウィンドウ) ---
+   動画全体ではなく “表示範囲” を示すグレー→ホワイトのグラデ */
 #timeline-container {
   position: relative;
-  width: 640px;
-  /* プレイヤーと同じ幅 */
+  width: 640px; /* プレイヤーと同じ幅 */
   height: 30px;
   background: linear-gradient(90deg, #e1e8ed, #f5f8fa);
   margin: 10px auto;
@@ -43,7 +48,8 @@ h1 {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* クリップ範囲（黄色枠）のスタイル */
+/* --- クリップ範囲 (黄色枠) ---
+   ドラッグで移動 & リサイズ。handle と合わせて UI で唯一動く要素 */
 #clip-range {
   position: absolute;
   top: 0;
@@ -56,7 +62,7 @@ h1 {
   cursor: move;
 }
 
-/* 左右のハンドル */
+/* --- 左右ハンドル (ドラッグで範囲を調整) --- */
 .handle {
   position: absolute;
   width: 5px;
@@ -66,16 +72,14 @@ h1 {
   cursor: ew-resize;
   border-radius: 2px;
 }
-
 .handle.left-handle {
   left: 0;
 }
-
 .handle.right-handle {
   right: 0;
 }
 
-/* 赤い再生位置インジケータ */
+/* --- 現在位置 (赤い再生ヘッド) --- */
 #current-indicator {
   position: absolute;
   top: 0;
@@ -90,14 +94,16 @@ h1 {
   top: -7%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 12px;       /* 直径12pxの丸 */
+  width: 12px; /* 直径12pxの丸 */
   height: 12px;
   background-color: #e0245e;
   border-radius: 50%;
-  cursor: pointer;   /* マウス操作がしやすいようにカーソルを変更 */
+  cursor: pointer; /* ドラッグ出来ることを示す */
 }
 
-/* タイム情報やボタンのスタイル */
+/* ================================================================
+   3. クリップ情報 & アクションエリア
+   ================================================================ */
 .info-section {
   display: flex;
   justify-content: center;
@@ -105,11 +111,11 @@ h1 {
   gap: 20px;
   margin-top: 15px;
 }
-
 .time-display {
   font-weight: 600;
 }
 
+/* ボタン共通スタイル (X.com の青ボタンを踏襲) */
 button {
   background-color: #1da1f2;
   color: #fff;
@@ -119,14 +125,15 @@ button {
   cursor: pointer;
   font-size: 14px;
 }
-
 button:hover {
   background-color: #1991da;
 }
 
+/* ================================================================
+   4. ファイル選択 / ドラッグ&ドロップ UI
+   ================================================================ */
 #dropArea {
-  border: 2px dashed #8899a6;
-  /* 薄いグレー */
+  border: 2px dashed #8899a6; /* 薄いグレー */
   border-radius: 10px;
   width: 80%;
   max-width: 600px;
@@ -138,38 +145,32 @@ button:hover {
   margin-bottom: 20px;
   transition: border-color 0.3s;
 }
-
 #dropArea.dragover {
-  border-color: #1da1f2;
-  /* X.comのアクセントカラー */
+  border-color: #1da1f2; /* ドラッグ時に青枠で強調 */
 }
-
 #dropArea p {
   color: #8899a6;
   font-size: 1.2em;
   margin: 0;
 }
 
-/* ファイル選択ボタン */
+/* ファイルアップロード用ダミーボタン (input[type=file] は後述で非表示) */
 .upload-btn {
   display: inline-block;
   padding: 12px 24px;
   font-size: 16px;
   color: #ffffff;
   background-color: #1da1f2;
-  /* アクセントカラー */
   border: none;
   border-radius: 5px;
   cursor: pointer;
   transition: background-color 0.3s;
   text-decoration: none;
 }
-
 .upload-btn:hover {
   background-color: #1a91da;
 }
 
-/* 選択されたファイル情報の表示 */
 #fileInfo {
   margin-top: 20px;
   font-size: 0.9em;
@@ -177,12 +178,14 @@ button:hover {
   text-align: center;
 }
 
-/* ファイル入力は非表示にする */
+/* 実際のファイル入力は画面に出さない */
 input[type="file"] {
   display: none;
 }
 
-/*動画リセットボタン*/
+/* ================================================================
+   5. プレイヤーリセット用クローズボタン
+   ================================================================ */
 #closeButton {
   position: absolute;
   top: 10px;
@@ -200,11 +203,18 @@ input[type="file"] {
   color: #14171a;
 }
 
-/* ——— ベースコンテナ ——— */
+/* ================================================================
+   6. FFmpeg 進捗バー
+   ================================================================ */
 .video-progress {
+  /* CSS 変数でカスタマイズ性を確保 */
   --progress-height: 8px;
   --progress-bg: #1e1e1e; /* ダークグレー背景 */
-  --progress-gradient: linear-gradient(90deg, #1da1f2 0%, #7b3eff 100%); /* X.comブルー→編集ソフト紫 */
+  --progress-gradient: linear-gradient(
+    90deg,
+    #1da1f2 0%,
+    #7b3eff 100%
+  ); /* X.comブルー→編集ソフト紫 */
   --progress-radius: 4px;
   --progress-transition: width 0.1s ease-out;
 
@@ -215,18 +225,17 @@ input[type="file"] {
   border-radius: var(--progress-radius);
   overflow: hidden;
 }
-
-/* ——— 進捗バー本体 ——— */
+/* 実際に伸びるバー */
 .video-progress__bar {
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   height: 100%;
-  width: 0;
+  width: 0; /* JS で動的に更新 */
   background: var(--progress-gradient);
   transition: var(--progress-transition);
 }
-
-/* ——— 進捗テキスト ——— */
+/* パーセンテージ表示 */
 .video-progress__info {
   position: absolute;
   top: calc(var(--progress-height) + 6px);
@@ -237,9 +246,21 @@ input[type="file"] {
   white-space: nowrap;
 }
 
+/* ================================================================
+   7. 汎用インジケータ
+   ================================================================ */
 .spinner {
-  display:inline-block;width:1em;height:1em;
-  border:2px solid #999;border-top-color:transparent;
-  border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid #999;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
 }
-@keyframes spin {to{transform:rotate(360deg)}}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

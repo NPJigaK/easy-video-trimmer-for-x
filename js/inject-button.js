@@ -1,15 +1,25 @@
-/**
- * inject-button.js – X ポスト欄に “動画トリム” ボタンを追加（CSS 共通版）
- */
+// ============================================================================
+// inject-button.js – Adds a ✂︎ "動画をトリム" button to X (Twitter) composer
+// ---------------------------------------------------------------------------
+// Works as a *content‑script*: runs on every page that matches manifest rule.
+// Key points
+//   • Finds the media‑upload button → clones it so native CSS classes apply
+//   • Swaps the SVG for a scissors‑in‑monitor glyph (24×24)
+//   • On click: opens main.html in a centred popup window (800×700)
+//   • Uses MutationObserver to cover dynamically regenerated toolbars
+// ============================================================================
 (() => {
-  const BTN_ID = "easyVideoTrimmerBtn";
-  const BLUE = "rgb(29, 155, 240)"; // X アイコン共通色
+  const BTN_ID = "easyVideoTrimmerBtn"; // unique data-testid
+  const BLUE = "rgb(29, 155, 240)"; // official X brand blue
 
-  /** ツールバーに 1 つだけ追加 */
+  // -------------------------------------------------------------------------
+  // inject(toolbar) – idempotently inserts the new button into a given toolbar
+  // -------------------------------------------------------------------------
   function inject(toolbar) {
+    // Avoid duplicates (observer may fire multiple times)
     if (toolbar.querySelector(`[data-testid="${BTN_ID}"]`)) return;
 
-    // 画像・動画ボタン（＝隣に <input type="file"> があるボタン）を取得
+    // Find the *media* button template: has a sibling <input type=file>
     const fileInput = toolbar.querySelector('input[type="file"]');
     const tmpl = fileInput
       ? fileInput
@@ -18,71 +28,44 @@
             'button[role="button"]:not([disabled]):not([aria-disabled="true"])'
           )
       : null;
+    if (!tmpl) return; // composer not ready yet
 
-    if (!tmpl) return; // 見つからない場合はスキップ
-
-    /* ── ボタンを複製 ── */
+    // ---- Duplicate & customise ------------------------------------------------
     const btn = tmpl.cloneNode(true);
 
-    // ---------- 属性・クラス調整 ----------
+    // A11y / state fixes
     btn.setAttribute("aria-label", "動画をトリム");
     btn.dataset.testid = BTN_ID;
     btn.removeAttribute("disabled");
     btn.setAttribute("aria-disabled", "false");
-    btn.classList.remove("r-icoktb"); // 無効化時に付く半透明クラス
+    btn.classList.remove("r-icoktb"); // semi‑transparent disabled style
 
-    // テンプレートに含まれる <input type="file"> などは不要
+    // Remove hidden <input type=file> the template contains (not needed here)
     btn.querySelectorAll("input").forEach((el) => el.remove());
 
-    /* ── SVG をハサミに差し替え ── */
+    // ---- Swap icon: scissors‑inside‑monitor -----------------------------------
     const oldSvg = btn.querySelector("svg");
-    oldSvg.outerHTML = `
-    <svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"           
-  stroke-width="1.7"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
+    oldSvg.outerHTML = `<!-- 24×24 icon (keeps parent CSS sizing) -->
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1.5" y="1.5" width="21" height="21" rx="3.8" />
+    <rect x="13" y="7.2" width="8.2" height="7.8" rx="1.4" fill="currentColor" stroke="none" />
+    <polygon points="15.2 8.9 18.6 11 15.2 13.1" fill="#FFF" stroke="none" />
+    <circle cx="6.8" cy="9.4"  r="2.3" />
+    <circle cx="6.8" cy="15.8" r="2.3" />
+    <path d="M9.2 9 L18 17.8" />
+    <path d="M11.4 6.8 L9.4 9" />
+    <path d="M13.2 13.4 L11.4 15.4" />
+  </svg>`;
 
-  <!-- 外枠（ラウンド角） -->
-  <rect x="1.5" y="1.5" width="21" height="21" rx="3.8" />
-
-  <!-- ビデオフレーム（塗りつぶし） -->
-  <rect x="13" y="7.2" width="8.2" height="7.8" rx="1.4" fill="currentColor" stroke="none" />
-
-  <!-- 再生ボタン（白） -->
-  <polygon points="15.2 8.9 18.6 11 15.2 13.1" fill="#FFFFFF" stroke="none" />
-
-  <!-- ハサミ：円２個＋刃３本 -->
-  <!-- 上リング -->
-  <circle cx="6.8" cy="9.4"  r="2.3" />
-  <!-- 下リング -->
-  <circle cx="6.8" cy="15.8" r="2.3" />
-  <!-- 交差する刃 -->
-  <path d="M9.2 9 L18 17.8" />
-  <!-- 刃先１ -->
-  <path d="M11.4 6.8 L9.4 9" />
-  <!-- 刃先２ -->
-  <path d="M13.2 13.4 L11.4 15.4" />
-
-</svg>
-    `;
-
-    /* ── アイコン全体を青に ── */
+    // Tint entire icon to blue (same selector X uses)
     const labelDiv = btn.querySelector(".css-146c3p1");
     if (labelDiv) labelDiv.style.color = BLUE;
 
-    /* ── クリックで独立ウィンドウ ── */
+    // ---- Click handler: open trimming UI --------------------------------------
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const url = chrome.runtime.getURL("html/main.html");
       const { screenX: x, screenY: y } = e;
-
       window.open(
         url,
         "_blank",
@@ -98,12 +81,7 @@
       );
     });
 
-    /* ── ラッパー <div> を作って末尾に追加 ── */
-    // const wrapper = document.createElement("div");
-    // wrapper.className = "css-175oi2r r-14tvyh0 r-cpa5s6"; // 既存と同じ
-    // wrapper.setAttribute("role", "presentation");
-    // wrapper.appendChild(btn);
-
+    // ---- Wrap with expected Twitter div hierarchy & append --------------------
     const outer = document.createElement("div");
     outer.className = "css-175oi2r r-14tvyh0 r-cpa5s6";
     outer.setAttribute("role", "presentation");
@@ -113,6 +91,7 @@
     inner.appendChild(btn);
     outer.appendChild(inner);
 
+    // X has two possible list containers depending on composer variant
     const list =
       toolbar.querySelector('[data-testid="ScrollSnap-List"]') ||
       toolbar.querySelector('[role="tablist"]') ||
@@ -120,10 +99,11 @@
     list.appendChild(outer);
   }
 
-  /* 既存ツールバーへ注入 */
+  // ---------------------------------------------------------------------------
+  // Initial injection + observe future composer instances (SPA navigation)
+  // ---------------------------------------------------------------------------
   document.querySelectorAll('[data-testid="toolBar"]').forEach(inject);
 
-  /* 動的に生成されるツールバーも監視して注入 */
   new MutationObserver(() =>
     document.querySelectorAll('[data-testid="toolBar"]').forEach(inject)
   ).observe(document.body, { childList: true, subtree: true });

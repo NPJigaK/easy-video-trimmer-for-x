@@ -1,66 +1,95 @@
+<!-- =====================================================================
+     main.html – Stand‑alone trimming UI for "Easy Video Trimmer for X.com"
+     This page is opened as a popup window from inject‑button.js.
+     * No network calls: everything runs client‑side (Video.js + FFmpeg WASM)
+     * Flow: choose file → timeline/trim → FFmpeg → download
+     ===================================================================== -->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8" />
-    <title>Easy Video Trimmer for X.com — Alpha Build</title>
-    <!-- Video.js のCSS -->
+    <title>Easy Video Trimmer for X.com — Alpha Version</title>
+
+    <!-- Video.js default skin (player UI) -->
     <link href="../lib/video/video-js.css" rel="stylesheet" />
+    <!-- App‑specific styling / Twitter‑like dark theme -->
     <link href="../css/main.css" rel="stylesheet" />
 </head>
 
 <body>
-    <h1>Easy video clip for X.com — Alpha Build</h1>
+    <h1>Easy video clip for X.com — Alpha Version</h1>
 
+    <!-- =============================================================
+              1. ファイル選択ビュー – 初期状態 (drag & drop も許可)
+              ============================================================= -->
     <div id="pre-extension-container" style="display: contents">
-        <!-- ドラッグ＆ドロップ領域 -->
+        <!-- 1‑A: Drag‑and‑Drop area -->
         <div id="dropArea">
-            <p>ここにファイルをドラッグ＆ドロップしてください</p>
+            <p>Open file or Drop file fere</p>
         </div>
 
-        <!-- ファイル選択ボタン -->
-        <label for="fileInput" class="upload-btn">ファイルを選択</label>
-        <input id="fileInput" type="file" accept="video/*">
+        <!-- 1‑B: Fallback "select file" button (hidden <input> below) -->
+        <label for="fileInput" class="upload-btn">Open file</label>
+        <input id="fileInput" type="file" accept="video/*" />
     </div>
 
-    <!-- 選択されたファイル情報表示 -->
+    <!-- 1‑C: Selected file metadata (name / size / duration) -->
     <div id="fileInfo"></div>
 
+    <!-- =============================================================
+              2. メイン編集ビュー – file loaded ⇒ JS toggles display:block
+              ============================================================= -->
     <div id="main-extension-container" class="main-container" style="position: relative">
+        <!-- Close / Reset button (resets player & returns to drop view) -->
         <button id="closeButton" title="閉じる">×</button>
 
+        <!-- 2‑A: Video preview (Video.js controls & rate selector) -->
         <div class="video-container">
-            <!-- Video.js プレイヤー -->
-            <video id="my-video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="360">
-            </video>
+            <video id="my-video" class="video-js vjs-default-skin" controls preload="auto" width="640"
+                height="360"></video>
         </div>
 
-        <!-- タイムラインUI（ズームウィンドウとして機能） -->
+        <!-- 2‑B: Interactive timeline → clipStart / clipEnd are set here -->
         <div id="timeline-container">
-            <!-- 赤い再生位置インジケータ -->
+            <!-- (red) current‑time indicator, draggable in content.js -->
             <div id="current-indicator"></div>
+            <!-- (yellow) clip range. Handles modify start/end -->
             <div id="clip-range">
                 <div class="handle left-handle"></div>
                 <div class="handle right-handle"></div>
             </div>
         </div>
 
+        <!-- 2‑C: Time labels + Trim action button -->
         <div class="info-section">
             <span class="time-display">Clip Start: <span id="startTimeLabel">0</span>s</span>
             <span class="time-display">Clip End: <span id="endTimeLabel">0</span>s</span>
+            <!-- Triggers runFFmpeg() in ffmpeg-controller.js -->
             <button id="log-range-btn">Clip video download</button>
-            <div id="status-box" style="display:none;font-size:1.1rem;margin-top:1rem;line-height:1.4;"></div>
+            <!-- Real‑time status/progress text from JS (hidden by default) -->
+            <div id="status-box" style="display: none; font-size: 1.1rem; margin-top: 1rem; line-height: 1.4"></div>
         </div>
+
+        <!-- 2‑D: FFmpeg progress bar (filled via VideoProgress class) -->
         <div id="myProgress" class="video-progress"></div>
     </div>
 
-    <!-- Video.js本体 -->
+    <!-- =============================================================
+              3. Script pipeline  (order matters!)
+              ============================================================= -->
+    <!-- SharedArrayBuffer / COOP‑COEP helper – must load first -->
     <script src="../lib/coi-serviceworker/coi-serviceworker.js"></script>
+
+    <!-- Player library -->
     <script src="../lib/video/video.min.js"></script>
 
+    <!-- FFmpeg WASM (UMD) + thin util wrapper (fetchFile) -->
     <script src="../lib/ffmpeg/umd/ffmpeg.js"></script>
     <script src="../lib/ffmpeg/util.js"></script>
-    <script src="../js/options.js"></script>
+
+    <!-- App logic: FFmpeg bootstrap & UI wiring -->
+    <script src="../js/ffmpeg-controller.js"></script>
     <script src="../js/content.js"></script>
 </body>
 
