@@ -1,0 +1,56 @@
+{
+    "manifest_version": 3,
+    "name": "Easy Video Trimmer for X.com",
+    "version": "0.0.1.1",
+    "version_name": "0.0.1-alpha.1",
+    "description": "Easy Video Trimmer for X.com — Alpha Build",
+    "icons": {
+        "32": "icons/32.png",
+        "48": "icons/48.png",
+        "96": "icons/96.png"
+    },
+    "permissions": [],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_icon": "icons/48.png",
+        "default_title": "Addon-Template",
+        "default_popup": "html/popup.html"
+    },
+    "background": {
+        "service_worker": "js/background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "lib/ffmpeg/umd/ffmpeg.js",
+                "lib/ffmpeg/util.js",
+                "js/options.js",
+                "js/inject-button.js"
+            ]
+        }
+    ],
+    "options_ui": {
+        "page": "html/options.html"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "data/*",
+                "html/*",
+                "lib/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; child-src 'self';"
+    }
+}
