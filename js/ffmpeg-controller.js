@@ -49,7 +49,8 @@ async function runFFmpeg(
   outputFileName,
   commandStr,
   file,
-  _clipDuration
+  _clipDuration,
+  saveAs
 ) {
   // 0) Prepare progress bar
   clipDuration = _clipDuration;
@@ -84,7 +85,7 @@ async function runFFmpeg(
 
   // 6) Retrieve Uint8Array → Blob → trigger download
   const data = await ffmpeg.readFile(outputFileName);
-  downloadFile(new Blob([data.buffer]), outputFileName);
+  downloadFile(new Blob([data.buffer]), saveAs);
 }
 
 // Simple download helper (avoids using chrome.downloads permission)
