@@ -315,6 +315,9 @@ const logRangeBtn = document.getElementById("log-range-btn");
 const statusBox = document.getElementById("status-box");
 
 logRangeBtn.addEventListener("click", async () => {
+  const VFS_IN  = "input.mp4";
+  const VFS_OUT = "output.mp4";
+
   logRangeBtn.disabled = true;
   logRangeBtn.style.display = "none";
   statusBox.innerHTML = 'Encoding… <span class="spinner"></span>';
@@ -324,11 +327,11 @@ logRangeBtn.addEventListener("click", async () => {
   const file = fileInput.files[0];
   if (!file) return alert("Please select a file");
 
-  const input = file.name;
-  const output = "easy-clip-video-" + file.name;
+  // const input = file.name;
+  const outputName = "easy-video-trimmer-" + file.name;
   const cmd =
     "ffmpeg -i " +
-    input +
+    VFS_IN +
     " -ss " +
     clipStart +
     " -to " +
@@ -336,9 +339,9 @@ logRangeBtn.addEventListener("click", async () => {
     " -c:v libx264 -threads 4 -profile:v high -level:v 4.0 -preset fast" +
     " -b:v 5000k -maxrate 5000k -bufsize 10000k" +
     " -vf scale=1280:720,format=yuv420p -c:a aac -b:a 128k -ac 2 " +
-    output;
+    VFS_OUT;
   try {
-    await runFFmpeg(input, output, cmd, file, clipEnd - clipStart);
+    await runFFmpeg(VFS_IN, VFS_OUT, cmd, file, clipEnd - clipStart, outputName);
     startCountdownAndClose("Download complete!");
   } catch (_) {
     startCountdownAndClose("Failed to encoding.");
