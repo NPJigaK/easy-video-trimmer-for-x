@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Easy Video Trimmer for X.com",
-    "version": "0.0.1.2",
-    "version_name": "0.0.1-alpha.2",
+    "version": "0.0.1.3",
+    "version_name": "0.0.1-alpha.3",
     "description": "Easy Video Trimmer for X.com — Alpha Version",
     "icons": {
         "32": "icons/32.png",
