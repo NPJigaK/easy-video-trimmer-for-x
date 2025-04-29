@@ -11,7 +11,7 @@
     },
     "permissions": [],
     "host_permissions": [
-        "<all_urls>"
+        "https://x.com/*"
     ],
     "action": {
         "default_icon": "icons/48.png",
@@ -24,7 +24,7 @@
     "content_scripts": [
         {
             "matches": [
-                "<all_urls>"
+                "https://x.com/*"
             ],
             "js": [
                 "lib/ffmpeg/umd/ffmpeg.js",
