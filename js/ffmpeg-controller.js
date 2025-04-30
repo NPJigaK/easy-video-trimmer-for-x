@@ -17,9 +17,9 @@ const { fetchFile } = FFmpegUtil;
 const ffmpeg = new FFmpeg(); // one global instance – recreated each run
 
 // All 3 worker assets must be absolute extension URLs so FFmpeg can import()
-const coreUrl = chrome.runtime.getURL("lib/ffmpeg/ffmpeg-core.js");
-const wasmUrl = chrome.runtime.getURL("lib/ffmpeg/ffmpeg-core.wasm");
-const workerUrl = chrome.runtime.getURL("lib/ffmpeg/ffmpeg-core.worker.js");
+const coreUrl = chrome.runtime.getURL("lib/ffmpeg/core-mt/ffmpeg-core.js");
+const wasmUrl = chrome.runtime.getURL("lib/ffmpeg/core-mt/ffmpeg-core.wasm");
+const workerUrl = chrome.runtime.getURL("lib/ffmpeg/core-mt/ffmpeg-core.worker.js");
 
 // ---- 2. Logging & progress taps ------------------------------------------
 ffmpeg.on("log", ({ message }) => console.log(message));
