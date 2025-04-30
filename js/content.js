@@ -349,7 +349,7 @@ logRangeBtn.addEventListener("click", async () => {
 });
 
 function startCountdownAndClose(msg) {
-  let n = 5;
+  let n = 10;
   const tick = () => {
     statusBox.textContent = `${msg} Closing this window in ${n} s…`;
     if (n-- === 0) {
