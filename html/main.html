@@ -78,15 +78,12 @@
     <!-- =============================================================
               3. Script pipeline  (order matters!)
               ============================================================= -->
-    <!-- SharedArrayBuffer / COOP‑COEP helper – must load first -->
-    <script src="../lib/coi-serviceworker/coi-serviceworker.js"></script>
-
     <!-- Player library -->
     <script src="../lib/video/video.min.js"></script>
 
     <!-- FFmpeg WASM (UMD) + thin util wrapper (fetchFile) -->
-    <script src="../lib/ffmpeg/umd/ffmpeg.js"></script>
-    <script src="../lib/ffmpeg/util.js"></script>
+    <script src="../lib/ffmpeg/ffmpeg/ffmpeg.js"></script>
+    <script src="../lib/ffmpeg/util/util.js"></script>
 
     <!-- App logic: FFmpeg bootstrap & UI wiring -->
     <script src="../js/ffmpeg-controller.js"></script>

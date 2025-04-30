@@ -10,6 +10,12 @@
         "96": "icons/96.png"
     },
     "permissions": [],
+    "cross_origin_opener_policy": {
+        "value": "same-origin"
+    },
+    "cross_origin_embedder_policy": {
+        "value": "require-corp"
+    },
     "host_permissions": [
         "https://x.com/*"
     ],
@@ -27,8 +33,8 @@
                 "https://x.com/*"
             ],
             "js": [
-                "lib/ffmpeg/umd/ffmpeg.js",
-                "lib/ffmpeg/util.js",
+                "lib/ffmpeg/ffmpeg/ffmpeg.js",
+                "lib/ffmpeg/util/util.js",
                 "js/ffmpeg-controller.js",
                 "js/inject-button.js"
             ]
