@@ -4,7 +4,7 @@
 [日本人向けREADME](README_JP.md)
 
 Easy Video Trimmer for X.com is a Chrome extension aimed at bringing back the simple video trimming experience previously available on Twitter's official site.  
-All video editing and re-encoding happens entirely offline within your browser, ensuring your video files never leave your device. This guarantees strong security and complete privacy.  
+All video processing still happens entirely offline within your browser: trimming / demuxing / muxing are handled by ffmpeg.wasm, while H.264 video encoding now prefers WebCodecs so Chrome can use hardware acceleration when available (automatically falling back to CPU-only ffmpeg.wasm when not).  
 No longer do you have to open external video editing software every time; you can easily trim and post gameplay highlights or other videos directly within X.com's posting interface.
 
 ## version
@@ -17,7 +17,7 @@ This extension relies entirely on ffmpeg.wasm for video processing, which is cur
 Therefore, we consider it an **Alpha Version (experimental)** until the following major issues are resolved:
 
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/5
-  - Due to technical constraints in WebAssembly, ffmpeg.wasm cannot utilize GPU hardware encoding, resulting in speeds **about 1/10 that of native (installed) software**. Processing times for long or high-quality videos can become extremely long.
+  - Due to technical constraints in WebAssembly, ffmpeg.wasm cannot utilize GPU hardware encoding, resulting in speeds **about 1/10 that of native (installed) software**. The new WebCodecs path mitigates this on browsers that support hardware encode, but environments without WebCodecs still fall back to CPU-only ffmpeg.wasm.
 
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/6
   - Chromium-based browsers currently limit stable parallel processing (thread count) of ffmpeg.wasm to a maximum of **4 threads**. Specifying 5 or more threads causes processing to hang. We're waiting for fixes from Chromium / ffmpeg.wasm developers.
@@ -75,6 +75,12 @@ In compliance with [official best practices](https://developer.x.com/ja/docs/med
 | Audio codec     | AAC 128 kbps                 |
 | Resolution      | Up to 720p                   |
 | Thread count    | 4 (WASM)                     |
+
+### WebCodecs acceleration (new)
+
+- H.264 encoding prefers WebCodecs (hardware accelerated by Chrome when available).
+- ffmpeg.wasm is still used for trimming, AAC audio, and MP4 mux/remux.
+- If WebCodecs is unavailable or fails, the pipeline automatically falls back to CPU-only ffmpeg.wasm.
 
 ---
 
