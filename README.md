@@ -24,7 +24,8 @@ Therefore, we consider it an **Alpha Version (experimental)** until the followin
   - Chromium-based browsers currently limit stable parallel processing (thread count) of ffmpeg.wasm to a maximum of **4 threads**. Specifying 5 or more threads causes processing to hang. We're waiting for fixes from Chromium / ffmpeg.wasm developers.
 
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/7
-  - Currently, videos cannot be automatically attached to the X.com posting form. Due to Chromium's security restrictions, browser extensions (content scripts) have limited access to webpage DOM. Additionally, X.com's strict security policy (CSP) restricts this further. We are researching possible solutions for automatic attachment.
+  - ~~Currently, videos cannot be automatically attached to the X.com posting form. Due to Chromium's security restrictions, browser extensions (content scripts) have limited access to webpage DOM. Additionally, X.com's strict security policy (CSP) restricts this further. We are researching possible solutions for automatic attachment.~~
+  - fixed: https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/11
 
 ## 🛠️ Installation
 
@@ -56,11 +57,9 @@ _(Coming soon; manual installation currently required)_
 
 ![UI example](doc/image3.jpg)
 
-#### 3‑3. Click the **Clip video download** button.
+#### 3‑3. Click the **Clip video & attach to X.com** button.
 
-### 4. When the progress bar reaches 100%, the trimmed video is downloaded automatically.
-
-### 5. Attach the downloaded video to your X.com post.
+### 4. When the progress bar reaches 100%, the trimmed video is attached to your X.com post automatically (fallback: download if attachment fails).
 
 ---
 

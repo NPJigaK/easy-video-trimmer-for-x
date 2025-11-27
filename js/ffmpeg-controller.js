@@ -122,6 +122,7 @@ async function muxWithFFmpeg({
   framerate,
   durationSec,
   saveAs,
+  shouldDownload = false,
 }) {
   initProgressBar(durationSec);
   await ensureFFmpegLoaded();
@@ -152,7 +153,9 @@ async function muxWithFFmpeg({
 
   await ffmpeg.exec(cmd);
   const data = await ffmpeg.readFile(outputPath);
-  downloadFile(new Blob([data.buffer]), saveAs || outputPath);
+  const blob = new Blob([data.buffer], { type: "video/mp4" });
+  if (shouldDownload && saveAs) downloadFile(blob, saveAs);
+  return { blob, fileName: saveAs || outputPath };
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +167,8 @@ async function muxWithFFmpeg({
  * @param {string}  commandStr     – full CLI string starting with "ffmpeg"
  * @param {File}    file           – browser File object selected by user
  * @param {number}  _clipDuration  – seconds, for progress calculation
+ * @param {string}  [saveAs]       – optional name used only when downloading
+ * @param {{ shouldDownload?: boolean }} [options]
  */
 async function runFFmpeg(
   inputFileName,
@@ -171,7 +176,8 @@ async function runFFmpeg(
   commandStr,
   file,
   _clipDuration,
-  saveAs
+  saveAs,
+  { shouldDownload = false } = {}
 ) {
   // 0) Prepare progress bar
   initProgressBar(_clipDuration);
@@ -193,9 +199,11 @@ async function runFFmpeg(
   console.log(cmd);
   await ffmpeg.exec(cmd);
 
-  // 6) Retrieve Uint8Array → Blob → trigger download
+  // 6) Retrieve Uint8Array → Blob → return to caller (optional download)
   const data = await ffmpeg.readFile(outputFileName);
-  downloadFile(new Blob([data.buffer]), saveAs);
+  const blob = new Blob([data.buffer], { type: "video/mp4" });
+  if (shouldDownload && saveAs) downloadFile(blob, saveAs);
+  return { blob, fileName: saveAs || outputFileName };
 }
 
 // Simple download helper (avoids using chrome.downloads permission)

@@ -64,21 +64,34 @@
     // ---- Click handler: open trimming UI --------------------------------------
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const url = chrome.runtime.getURL("html/main.html");
+      const baseUrl = chrome.runtime.getURL("html/main.html");
       const { screenX: x, screenY: y } = e;
-      window.open(
-        url,
-        "_blank",
-        [
-          "popup=yes",
-          "resizable=yes",
-          "scrollbars=yes",
-          "width=800",
-          "height=700",
-          `left=${x - 300}`,
-          `top=${y}`,
-        ].join(",")
-      );
+
+      const openTrimmer = (tabId) => {
+        const url = tabId ? `${baseUrl}?tabId=${tabId}` : baseUrl;
+        window.open(
+          url,
+          "_blank",
+          [
+            "popup=yes",
+            "resizable=yes",
+            "scrollbars=yes",
+            "width=800",
+            "height=700",
+            `left=${x - 300}`,
+            `top=${y}`,
+          ].join(",")
+        );
+      };
+
+      chrome.runtime.sendMessage({ type: "GET_TAB_ID" }, (res) => {
+        if (chrome.runtime.lastError) {
+          console.warn("Failed to get tabId, opening without:", chrome.runtime.lastError);
+          openTrimmer();
+          return;
+        }
+        openTrimmer(res?.tabId);
+      });
     });
 
     // ---- Wrap with expected Twitter div hierarchy & append --------------------

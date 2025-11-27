@@ -9,7 +9,9 @@
         "48": "icons/48.png",
         "96": "icons/96.png"
     },
-    "permissions": [],
+    "permissions": [
+        "scripting"
+    ],
     "cross_origin_opener_policy": {
         "value": "same-origin"
     },

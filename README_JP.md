@@ -19,7 +19,8 @@ Easy Video Trimmer for X.com は、かつて Twitter 公式サイトに備わっ
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/6
   - Chromium 系ブラウザの仕様上、ffmpeg.wasm が安定して扱える 並列処理（スレッド数）が **最大 4 つ**までに制限されています。5 つ以上を指定すると処理が停止するため、現在は並列処理数を 4 つに制限しています。Chromium / ffmpeg.wasm 側の修正を待っています。
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/7
-  - 現在の仕様では、生成した動画を自動で投稿フォームに添付できません。Chromium の仕様により、拡張機能（コンテントスクリプト）はウェブページ（X.com）の DOM に制限されたアクセスしかできません。また、X.com の厳格なセキュリティポリシー（CSP）もあります。現在、添付自動化の実現方法を調査中です。
+  - ~~現在の仕様では、生成した動画を自動で投稿フォームに添付できません。Chromium の仕様により、拡張機能（コンテントスクリプト）はウェブページ（X.com）の DOM に制限されたアクセスしかできません。また、X.com の厳格なセキュリティポリシー（CSP）もあります。現在、添付自動化の実現方法を調査中です。~~
+  - fixed: https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/11
 
 ## 🛠️ インストール方法
 
@@ -51,11 +52,9 @@ _(近日公開予定、現在は手動インストールが必要です)_
 
 ![UIの例](doc/image3.jpg)
 
-#### 3‑3. **Clip video download** ボタンをクリック。
+#### 3‑3. **Clip video & attach to X.com** ボタンをクリック。
 
-### 4. 進捗バーが 100％ になったら、自動的にトリミングされた動画がダウンロードされます。
-
-### 5. ダウンロードした動画を X に添付して投稿します。
+### 4. 進捗バーが 100％ になったら、自動的に X の投稿画面へ添付されます（添付に失敗した場合のみダウンロードにフォールバック）。
 
 ---
 

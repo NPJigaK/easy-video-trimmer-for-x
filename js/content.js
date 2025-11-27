@@ -6,7 +6,7 @@
 //   current‑time indicator.
 // * Coordinates with:
 //     - Video.js player instance (preview)
-//     - ffmpeg-controller.js (runFFmpeg)   → encodes & downloads clip
+//     - ffmpeg-controller.js (runFFmpeg)   → encodes & returns clip blob
 // ============================================================================
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,6 +74,88 @@ let isDraggingIndicator = false; // red play‑head drag flag
 // Feature detection for WebCodecs hardware-accelerated path
 const supportsWebCodecs =
   typeof isWebCodecsAvailable !== "undefined" ? isWebCodecsAvailable : false;
+
+// Target X.com tab passed via query (?tabId=123); fallback asks background.
+const composerTabIdFromQuery = (() => {
+  const raw = new URLSearchParams(window.location.search).get("tabId");
+  const num = raw ? Number(raw) : NaN;
+  return Number.isFinite(num) ? num : null;
+})();
+
+function getLastKnownTabId() {
+  return new Promise((resolve) => {
+    if (!chrome.runtime?.sendMessage) return resolve(null);
+    chrome.runtime.sendMessage({ type: "GET_LAST_X_TAB" }, (res) => {
+      if (chrome.runtime.lastError) {
+        console.warn("Failed to fetch last tab id", chrome.runtime.lastError);
+        return resolve(null);
+      }
+      resolve(res?.tabId ?? null);
+    });
+  });
+}
+
+async function resolveComposerTabId() {
+  if (composerTabIdFromQuery) return composerTabIdFromQuery;
+  return getLastKnownTabId();
+}
+
+// Convert Blob to base64 string so it can cross the executeScript boundary
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const res = reader.result;
+      if (typeof res === "string") {
+        const comma = res.indexOf(",");
+        resolve(comma >= 0 ? res.slice(comma + 1) : res);
+      } else {
+        reject(new Error("Unexpected FileReader result type"));
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Inject into MAIN world on X.com and attach the provided blob as if user uploaded.
+async function attachClipToComposer(blob, fileName, mimeType = "video/mp4") {
+  const tabId = await resolveComposerTabId();
+  if (!tabId) throw new Error("X.com composer tab was not found.");
+  const base64 = await blobToBase64(blob);
+  const [result] = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    args: [base64, fileName, mimeType],
+    func: (b64, name, type) => {
+      const bin = atob(b64);
+      const len = bin.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+      const blobInside = new Blob([bytes], { type });
+      const file = new File([blobInside], name, { type });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const tweetInput =
+        document.querySelector('input[data-testid="fileInput"]') ||
+        document.querySelector('input[type="file"][accept*="video"]');
+      if (!tweetInput) {
+        return { attached: false, reason: "Tweet file input not found" };
+      }
+      tweetInput.files = dt.files;
+      tweetInput.dispatchEvent(new Event("change", { bubbles: true }));
+      tweetInput.dispatchEvent(new Event("input", { bubbles: true }));
+      return { attached: true, size: file.size };
+    },
+  });
+
+  if (!result?.result?.attached) {
+    throw new Error(
+      result?.result?.reason || "Page-side attach failed unexpectedly."
+    );
+  }
+  return result.result;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Helper utilities  (clamp / unit conversion)
@@ -313,9 +395,9 @@ fileInput.addEventListener("change", (e) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. "Clip video download" button → Hybrid pipeline
-//     • Preferred: FFmpeg trim → WebCodecs H.264 encode → FFmpeg mux
-//     • Fallback:  FFmpeg-only (CPU) encode when WebCodecs unavailable
+// 8. "Trim & attach to X" button → Hybrid pipeline
+//    • Preferred: FFmpeg trim → WebCodecs H.264 encode → FFmpeg mux
+//    • Fallback:  FFmpeg-only (CPU) encode when WebCodecs unavailable
 // ─────────────────────────────────────────────────────────────────────────────
 const logRangeBtn = document.getElementById("log-range-btn");
 const statusBox = document.getElementById("status-box");
@@ -347,6 +429,8 @@ logRangeBtn.addEventListener("click", async () => {
     " -vf scale=1280:720,format=yuv420p -c:a aac -b:a 128k -ac 2 " +
     VFS_OUT;
 
+  let finalBlob = null;
+
   try {
     if (supportsWebCodecs) {
       statusBox.innerHTML = 'Preparing clip… <span class="spinner"></span>';
@@ -374,7 +458,7 @@ logRangeBtn.addEventListener("click", async () => {
         statusBox.innerHTML =
           'Finalizing audio + video… <span class="spinner"></span>';
         await writeFFmpegFile(VFS_H264, videoBytes);
-        await muxWithFFmpeg({
+        const { blob } = await muxWithFFmpeg({
           videoH264Path: VFS_H264,
           audioSourcePath: VFS_TRIM,
           outputPath: VFS_OUT,
@@ -382,11 +466,12 @@ logRangeBtn.addEventListener("click", async () => {
           durationSec: clipDuration,
           saveAs: outputName,
         });
+        finalBlob = blob;
       } catch (webcodecsErr) {
         console.warn("WebCodecs pipeline failed, falling back:", webcodecsErr);
         statusBox.innerHTML =
           'Encoder issue detected, retrying… <span class="spinner"></span>';
-        await runFFmpeg(
+        const { blob } = await runFFmpeg(
           VFS_IN,
           VFS_OUT,
           ffmpegFallbackCmd,
@@ -394,11 +479,12 @@ logRangeBtn.addEventListener("click", async () => {
           clipDuration,
           outputName
         );
+        finalBlob = blob;
       }
     } else {
       statusBox.innerHTML =
         'Encoding… <span class="spinner"></span>';
-      await runFFmpeg(
+      const { blob } = await runFFmpeg(
         VFS_IN,
         VFS_OUT,
         ffmpegFallbackCmd,
@@ -406,11 +492,26 @@ logRangeBtn.addEventListener("click", async () => {
         clipDuration,
         outputName
       );
+      finalBlob = blob;
     }
-    startCountdownAndClose("Download complete!");
+
+    statusBox.innerHTML =
+      'Attaching to X… <span class="spinner"></span>';
+    await attachClipToComposer(finalBlob, outputName, "video/mp4");
+    startCountdownAndClose("Attached to X. Closing this window shortly.");
   } catch (err) {
     console.error(err);
-    startCountdownAndClose("Failed to encode.");
+    if (finalBlob) {
+      statusBox.textContent =
+        "Failed to attach automatically. Downloading the clip instead.";
+      downloadFile(finalBlob, outputName);
+      startCountdownAndClose(
+        "Attachment failed. Downloaded the clip instead."
+      );
+    } else {
+      statusBox.textContent = "Failed to encode.";
+      startCountdownAndClose("Failed to encode.");
+    }
   }
 });
 
