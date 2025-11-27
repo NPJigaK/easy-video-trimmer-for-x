@@ -56,11 +56,9 @@ _(Coming soon; manual installation currently required)_
 
 ![UI example](doc/image3.jpg)
 
-#### 3‑3. Click the **Clip video download** button.
+#### 3‑3. Click the **Clip video & attach to X.com** button.
 
-### 4. When the progress bar reaches 100%, the trimmed video is downloaded automatically.
-
-### 5. Attach the downloaded video to your X.com post.
+### 4. When the progress bar reaches 100%, the trimmed video is attached to your X.com post automatically (fallback: download if attachment fails).
 
 ---
 

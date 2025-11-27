@@ -395,9 +395,9 @@ fileInput.addEventListener("change", (e) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. "Clip video download" button → Hybrid pipeline
-//     • Preferred: FFmpeg trim → WebCodecs H.264 encode → FFmpeg mux
-//     • Fallback:  FFmpeg-only (CPU) encode when WebCodecs unavailable
+// 8. "Trim & attach to X" button → Hybrid pipeline
+//    • Preferred: FFmpeg trim → WebCodecs H.264 encode → FFmpeg mux
+//    • Fallback:  FFmpeg-only (CPU) encode when WebCodecs unavailable
 // ─────────────────────────────────────────────────────────────────────────────
 const logRangeBtn = document.getElementById("log-range-btn");
 const statusBox = document.getElementById("status-box");
