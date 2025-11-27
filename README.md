@@ -9,7 +9,7 @@ No longer do you have to open external video editing software every time; you ca
 
 ## version
 
-1.0.0-alpha.1
+1.1.0-alpha.1
 
 ### Why Alpha Version?
 

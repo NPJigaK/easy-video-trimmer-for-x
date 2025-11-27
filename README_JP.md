@@ -6,7 +6,7 @@ Easy Video Trimmer for X.com は、かつて Twitter 公式サイトに備わっ
 
 ## version
 
-1.0.0-alpha.1
+1.1.0-alpha.1
 
 ### なぜ Alpha Version なのか？
 
