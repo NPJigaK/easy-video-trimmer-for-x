@@ -71,6 +71,10 @@ let dragStartClipEnd = 0;
 
 let isDraggingIndicator = false; // red play‑head drag flag
 
+// Feature detection for WebCodecs hardware-accelerated path
+const supportsWebCodecs =
+  typeof isWebCodecsAvailable !== "undefined" ? isWebCodecsAvailable : false;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Helper utilities  (clamp / unit conversion)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,42 +313,104 @@ fileInput.addEventListener("change", (e) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. "Clip video download" button → FFmpeg WASM encode & auto‑close
+// 8. "Clip video download" button → Hybrid pipeline
+//     • Preferred: FFmpeg trim → WebCodecs H.264 encode → FFmpeg mux
+//     • Fallback:  FFmpeg-only (CPU) encode when WebCodecs unavailable
 // ─────────────────────────────────────────────────────────────────────────────
 const logRangeBtn = document.getElementById("log-range-btn");
 const statusBox = document.getElementById("status-box");
 
 logRangeBtn.addEventListener("click", async () => {
-  const VFS_IN  = "input.mp4";
+  const VFS_IN = "input.mp4";
   const VFS_OUT = "output.mp4";
+  const VFS_TRIM = "trimmed.mp4";
+  const VFS_H264 = "video.h264";
 
-  logRangeBtn.disabled = true;
-  logRangeBtn.style.display = "none";
-  statusBox.innerHTML = 'Encoding… <span class="spinner"></span>';
-  statusBox.style.display = "block";
-
-  console.log(`Clip Range: start=${clipStart}, end=${clipEnd}`);
+  const clipDuration = clipEnd - clipStart;
   const file = fileInput.files[0];
   if (!file) return alert("Please select a file");
+  logRangeBtn.disabled = true;
+  logRangeBtn.style.display = "none";
+  statusBox.style.display = "block";
 
-  // const input = file.name;
   const outputName = "easy-video-trimmer-" + file.name;
-  const cmd =
+  console.log(`Clip Range: start=${clipStart}, end=${clipEnd}`);
+  const ffmpegFallbackCmd =
     "ffmpeg -i " +
     VFS_IN +
     " -ss " +
     clipStart +
     " -to " +
     clipEnd +
-    " -c:v libx264 -threads 4 -profile:v high -level:v 4.0 -preset fast" +
+    " -c:v libx264 -threads 4 -profile:v high -level:v 4.1 -preset fast" +
     " -b:v 5000k -maxrate 5000k -bufsize 10000k" +
     " -vf scale=1280:720,format=yuv420p -c:a aac -b:a 128k -ac 2 " +
     VFS_OUT;
+
   try {
-    await runFFmpeg(VFS_IN, VFS_OUT, cmd, file, clipEnd - clipStart, outputName);
+    if (supportsWebCodecs) {
+      statusBox.innerHTML = 'Preparing clip… <span class="spinner"></span>';
+      try {
+        const trimmedBytes = await trimWithFFmpeg(
+          VFS_IN,
+          VFS_TRIM,
+          file,
+          clipStart,
+          clipEnd
+        );
+
+        statusBox.innerHTML =
+          'Encoding video… <span class="spinner"></span>';
+        const trimmedBlob = new Blob([trimmedBytes.buffer], {
+          type: "video/mp4",
+        });
+        const { videoBytes, framerate } = await encodeWithWebCodecs(
+          trimmedBlob,
+          {
+            bitrate: 5_000_000,
+          }
+        );
+
+        statusBox.innerHTML =
+          'Finalizing audio + video… <span class="spinner"></span>';
+        await writeFFmpegFile(VFS_H264, videoBytes);
+        await muxWithFFmpeg({
+          videoH264Path: VFS_H264,
+          audioSourcePath: VFS_TRIM,
+          outputPath: VFS_OUT,
+          framerate,
+          durationSec: clipDuration,
+          saveAs: outputName,
+        });
+      } catch (webcodecsErr) {
+        console.warn("WebCodecs pipeline failed, falling back:", webcodecsErr);
+        statusBox.innerHTML =
+          'Encoder issue detected, retrying… <span class="spinner"></span>';
+        await runFFmpeg(
+          VFS_IN,
+          VFS_OUT,
+          ffmpegFallbackCmd,
+          file,
+          clipDuration,
+          outputName
+        );
+      }
+    } else {
+      statusBox.innerHTML =
+        'Encoding… <span class="spinner"></span>';
+      await runFFmpeg(
+        VFS_IN,
+        VFS_OUT,
+        ffmpegFallbackCmd,
+        file,
+        clipDuration,
+        outputName
+      );
+    }
     startCountdownAndClose("Download complete!");
-  } catch (_) {
-    startCountdownAndClose("Failed to encoding.");
+  } catch (err) {
+    console.error(err);
+    startCountdownAndClose("Failed to encode.");
   }
 });
 

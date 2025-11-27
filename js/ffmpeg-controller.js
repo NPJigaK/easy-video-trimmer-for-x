@@ -1,12 +1,18 @@
 // =======================================================================
 // ffmpeg-controller.js – Thin wrapper around @ffmpeg/ffmpeg WASM runtime
 // -----------------------------------------------------------------------
-// • Exposes runFFmpeg() so UI can pass (input, output, command, File blob).
-// • Handles:
-//     1. Locating core / wasm / worker via chrome.runtime.getURL()
-//     2. Lazy‑loading / terminating the FFmpeg instance between runs
-//     3. Bridging FFmpeg progress → VideoProgress (blue bar)
-//     4. Converting Uint8Array output → downloadable Blob
+// Exposes two layers:
+//   1) Legacy runFFmpeg() – all-in-FFmpeg pipeline (fallback)
+//   2) New helpers for hybrid mode:
+//        • ensureFFmpegLoaded() – lazy load core/wasm/worker
+//        • trimWithFFmpeg()     – precise trim + container copy
+//        • muxWithFFmpeg()      – WebCodecs H.264 + AAC → MP4
+//        • readFFmpegFile()     – pull Uint8Array out of VFS
+//        • writeFFmpegFile()    – push Uint8Array into VFS
+// Notes on the hybrid flow:
+//   - FFmpeg is still used for trimming and mux/demux (exact cut points).
+//   - WebCodecs does the heavy video encode when available.
+//   - The UI (content.js) decides which path to run at runtime.
 // =======================================================================
 
 // Shorthands exposed by util bundle (bundled under lib/ffmpeg/)
@@ -14,7 +20,7 @@ const { FFmpeg } = FFmpegWASM;
 const { fetchFile } = FFmpegUtil;
 
 // ---- 1. Instance & asset URLs --------------------------------------------
-const ffmpeg = new FFmpeg(); // one global instance – recreated each run
+const ffmpeg = new FFmpeg(); // single instance reused across steps
 
 // All 3 worker assets must be absolute extension URLs so FFmpeg can import()
 const coreUrl = chrome.runtime.getURL("lib/ffmpeg/core-mt/ffmpeg-core.js");
@@ -28,14 +34,129 @@ let progress; // VideoProgress instance (injected later)
 let clipDuration; // seconds – used to compute %
 
 ffmpeg.on("progress", ({ time }) => {
-  progress.update({ time }); // visual bar
+  if (progress) progress.update({ time }); // visual bar
   const sec = time / 1_000_000;
-  const pct = Math.min((sec / clipDuration) * 100, 100);
-  console.log(`${pct.toFixed(1)}%, time: ${sec.toFixed(2)} s`);
+  const pct = clipDuration
+    ? Math.min((sec / clipDuration) * 100, 100)
+    : undefined;
+  console.log(
+    pct !== undefined
+      ? `${pct.toFixed(1)}%, time: ${sec.toFixed(2)} s`
+      : `time: ${sec.toFixed(2)} s`
+  );
 });
 
 // ---------------------------------------------------------------------------
-// runFFmpeg() – main entry from content.js
+// Progress helper shared by both pipelines
+// ---------------------------------------------------------------------------
+function initProgressBar(durationSec) {
+  clipDuration = durationSec;
+  const container = document.getElementById("myProgress");
+  container.innerHTML = "";
+  progress = new VideoProgress(container, durationSec);
+}
+
+// ---------------------------------------------------------------------------
+// ensureFFmpegLoaded() – lazy load core/wasm/worker once
+// ---------------------------------------------------------------------------
+async function ensureFFmpegLoaded() {
+  if (ffmpeg.loaded) return;
+  await ffmpeg.load({
+    coreURL: coreUrl,
+    wasmURL: wasmUrl,
+    workerURL: workerUrl,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// read / write helpers for the VFS (Uint8Array <-> FFmpeg memfs)
+// ---------------------------------------------------------------------------
+async function readFFmpegFile(path) {
+  return ffmpeg.readFile(path);
+}
+
+async function writeFFmpegFile(path, data) {
+  return ffmpeg.writeFile(path, data);
+}
+
+// ---------------------------------------------------------------------------
+// trimWithFFmpeg() – precise trim using FFmpeg (copy streams, avoid re-encode)
+// Returns Uint8Array of the trimmed container for WebCodecs to decode.
+// ---------------------------------------------------------------------------
+async function trimWithFFmpeg(
+  inputFileName,
+  trimmedFileName,
+  file,
+  startSec,
+  endSec
+) {
+  const clipLen = endSec - startSec;
+  initProgressBar(clipLen);
+  await ensureFFmpegLoaded();
+  await ffmpeg.writeFile(inputFileName, await fetchFile(file));
+
+  const cmd = [
+    "-i",
+    inputFileName,
+    "-ss",
+    `${startSec}`,
+    "-t",
+    `${clipLen}`,
+    "-c",
+    "copy",
+    "-avoid_negative_ts",
+    "make_zero",
+    trimmedFileName,
+  ];
+  await ffmpeg.exec(cmd);
+  return ffmpeg.readFile(trimmedFileName);
+}
+
+// ---------------------------------------------------------------------------
+// muxWithFFmpeg() – wrap WebCodecs H.264 + audio into MP4
+// ---------------------------------------------------------------------------
+async function muxWithFFmpeg({
+  videoH264Path,
+  audioSourcePath,
+  outputPath,
+  framerate,
+  durationSec,
+  saveAs,
+}) {
+  initProgressBar(durationSec);
+  await ensureFFmpegLoaded();
+  const cmd = [
+    "-r",
+    `${Math.round(framerate || 30)}`,
+    "-i",
+    videoH264Path,
+    "-i",
+    audioSourcePath,
+    "-map",
+    "0:v:0",
+    "-map",
+    "1:a?",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    "-ac",
+    "2",
+    "-movflags",
+    "+faststart",
+    "-shortest",
+    outputPath,
+  ];
+
+  await ffmpeg.exec(cmd);
+  const data = await ffmpeg.readFile(outputPath);
+  downloadFile(new Blob([data.buffer]), saveAs || outputPath);
+}
+
+// ---------------------------------------------------------------------------
+// runFFmpeg() – legacy all-in-FFmpeg path (CPU-only fallback)
 // ---------------------------------------------------------------------------
 /**
  * @param {string}  inputFileName  – virtual FS path (e.g. original.mp4)
@@ -53,21 +174,10 @@ async function runFFmpeg(
   saveAs
 ) {
   // 0) Prepare progress bar
-  clipDuration = _clipDuration;
-  progress = new VideoProgress(
-    document.getElementById("myProgress"),
-    _clipDuration
-  );
+  initProgressBar(_clipDuration);
 
-  // 1) Terminate previous instance (memory leak guard)
-  if (ffmpeg.loaded) await ffmpeg.terminate();
-
-  // 2) Load core/wasm/worker – takes ~1s on modern machines
-  await ffmpeg.load({
-    coreURL: coreUrl,
-    wasmURL: wasmUrl,
-    workerURL: workerUrl,
-  });
+  // 1) Load core/wasm/worker – takes ~1s on modern machines
+  await ensureFFmpegLoaded();
 
   // 3) Build CLI array, ensure string starts with "ffmpeg"
   const cmd = commandStr.split(" ");

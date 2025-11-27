@@ -1,7 +1,7 @@
 # Easy Video Trimmer for X.com
 
 Easy Video Trimmer for X.com は、かつて Twitter 公式サイトに備わっていたシンプルな動画トリミング機能を再現することを目標とした Chrome 拡張機能です。  
-動画の編集と再エンコードはすべてオフラインのブラウザ内で行われるため、動画ファイルが外部のサーバーへ送信されることは一切ありません。これにより高いセキュリティ性と完全なプライバシーが確保されます。  
+動画の処理はこれまで通りすべてオフラインのブラウザ内で完結します。トリミング・コンテナ処理は ffmpeg.wasm、H.264 の再エンコードは WebCodecs を優先して実行し、対応ブラウザではハードウェアアクセラレーションを利用します（非対応環境では自動的に CPU の ffmpeg.wasm にフォールバックします）。  
 毎回編集ソフトを立ち上げる手間からも解放され、X.com の投稿画面上で直感的に操作できるため、ゲームプレイの名場面などをすぐにクリップして投稿することが可能になります。
 
 ## version
@@ -14,7 +14,8 @@ Easy Video Trimmer for X.com は、かつて Twitter 公式サイトに備わっ
 そのため、以下の課題が解決されるまでは **Alpha Version（試験的なバージョン）** としています。
 
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/5
-  - ffmpeg.wasm は WebAssembly の技術的な制限で、GPU ハードウェアエンコードが使えず **ネイティブ版(PC にインストールするタイプ)の約 1/10 の速度** しか出ません。特に長い動画や高画質な動画では待ち時間が非常に長くなる可能性があります。
+  - ~~ffmpeg.wasm は WebAssembly の技術的な制限で、GPU ハードウェアエンコードが使えず **ネイティブ版(PC にインストールするタイプ)の約 1/10 の速度** しか出ません。WebCodecs 対応ブラウザではハードウェアエンコードを使うことでこの課題を緩和できますが、WebCodecs 非対応の環境では従来通り CPU の ffmpeg.wasm にフォールバックします。~~
+  - fixed: https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/10
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/6
   - Chromium 系ブラウザの仕様上、ffmpeg.wasm が安定して扱える 並列処理（スレッド数）が **最大 4 つ**までに制限されています。5 つ以上を指定すると処理が停止するため、現在は並列処理数を 4 つに制限しています。Chromium / ffmpeg.wasm 側の修正を待っています。
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/7
@@ -70,6 +71,12 @@ _(近日公開予定、現在は手動インストールが必要です)_
 | 音声コーデック | AAC 128 kbps                  |
 | 解像度         | 最大 720p                     |
 | 使用スレッド数 | 4（WASM）                     |
+
+### WebCodecs によるハードウェアエンコード（新機能）
+
+- H.264 エンコードは WebCodecs を優先（利用可能な場合は GPU ハードウェアエンコーダを使用）
+- トリミング・AAC 音声エンコード・MP4 コンテナ処理は ffmpeg.wasm が担当
+- WebCodecs が利用できない場合や失敗した場合は自動的に ffmpeg.wasm の CPU 処理にフォールバック
 
 ---
 
