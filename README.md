@@ -17,7 +17,8 @@ This extension relies entirely on ffmpeg.wasm for video processing, which is cur
 Therefore, we consider it an **Alpha Version (experimental)** until the following major issues are resolved:
 
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/5
-  - Due to technical constraints in WebAssembly, ffmpeg.wasm cannot utilize GPU hardware encoding, resulting in speeds **about 1/10 that of native (installed) software**. The new WebCodecs path mitigates this on browsers that support hardware encode, but environments without WebCodecs still fall back to CPU-only ffmpeg.wasm.
+  - ~~Due to technical constraints in WebAssembly, ffmpeg.wasm cannot utilize GPU hardware encoding, resulting in speeds **about 1/10 that of native (installed) software**. The new WebCodecs path mitigates this on browsers that support hardware encode, but environments without WebCodecs still fall back to CPU-only ffmpeg.wasm.~~
+  - fixed: https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/10
 
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/6
   - Chromium-based browsers currently limit stable parallel processing (thread count) of ffmpeg.wasm to a maximum of **4 threads**. Specifying 5 or more threads causes processing to hang. We're waiting for fixes from Chromium / ffmpeg.wasm developers.

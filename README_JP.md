@@ -14,7 +14,8 @@ Easy Video Trimmer for X.com は、かつて Twitter 公式サイトに備わっ
 そのため、以下の課題が解決されるまでは **Alpha Version（試験的なバージョン）** としています。
 
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/5
-  - ffmpeg.wasm は WebAssembly の技術的な制限で、GPU ハードウェアエンコードが使えず **ネイティブ版(PC にインストールするタイプ)の約 1/10 の速度** しか出ません。WebCodecs 対応ブラウザではハードウェアエンコードを使うことでこの課題を緩和できますが、WebCodecs 非対応の環境では従来通り CPU の ffmpeg.wasm にフォールバックします。
+  - ~~ffmpeg.wasm は WebAssembly の技術的な制限で、GPU ハードウェアエンコードが使えず **ネイティブ版(PC にインストールするタイプ)の約 1/10 の速度** しか出ません。WebCodecs 対応ブラウザではハードウェアエンコードを使うことでこの課題を緩和できますが、WebCodecs 非対応の環境では従来通り CPU の ffmpeg.wasm にフォールバックします。~~
+  - fixed: https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/10
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/6
   - Chromium 系ブラウザの仕様上、ffmpeg.wasm が安定して扱える 並列処理（スレッド数）が **最大 4 つ**までに制限されています。5 つ以上を指定すると処理が停止するため、現在は並列処理数を 4 つに制限しています。Chromium / ffmpeg.wasm 側の修正を待っています。
 - https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/7
