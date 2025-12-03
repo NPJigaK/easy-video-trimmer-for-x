@@ -1,32 +1,31 @@
 <!-- =====================================================================
      main.html – Stand‑alone trimming UI for "Easy Video Trimmer for X.com"
      This page is opened as a popup window from inject‑button.js.
-     * No network calls: everything runs client‑side (Video.js + FFmpeg WASM)
-     * Flow: choose file → timeline/trim → FFmpeg → download
+     * No network calls: everything runs client‑side (HTML5 video + FFmpeg WASM)
+     * Flow: choose file → timeline/trim → FFmpeg → download
      ===================================================================== -->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8" />
-    <title>Easy Video Trimmer for X.com — Alpha Version</title>
+    <title>Easy Video Trimmer for X.com — Beta Version</title>
 
-    <!-- Video.js default skin (player UI) -->
-    <link href="../lib/video/video-js.css" rel="stylesheet" />
     <!-- App‑specific styling / Twitter‑like dark theme -->
     <link href="../css/main.css" rel="stylesheet" />
 </head>
 
 <body>
-    <h1>Easy video clip for X.com — Alpha Version</h1>
+    
 
     <!-- =============================================================
-              1. ファイル選択ビュー – 初期状態 (drag & drop も許可)
+              1. File selection view – initial state (drag & drop allowed)
               ============================================================= -->
     <div id="pre-extension-container" style="display: contents">
+    <h1>Easy Video Trimmer for X.com — Beta Version</h1>
         <!-- 1‑A: Drag‑and‑Drop area -->
         <div id="dropArea">
-            <p>Open file or Drop file fere</p>
+            <p>Open file or Drop file here</p>
         </div>
 
         <!-- 1‑B: Fallback "select file" button (hidden <input> below) -->
@@ -38,49 +37,83 @@
     <div id="fileInfo"></div>
 
     <!-- =============================================================
-              2. メイン編集ビュー – file loaded ⇒ JS toggles display:block
+              2. Main editing view – file loaded ⇒ JS toggles display:block
               ============================================================= -->
     <div id="main-extension-container" class="main-container" style="position: relative">
         <!-- Close / Reset button (resets player & returns to drop view) -->
-        <button id="closeButton" title="閉じる">×</button>
+        <button id="closeButton" title="Close">×</button>
 
-        <!-- 2‑A: Video preview (Video.js controls & rate selector) -->
-        <div class="video-container">
-            <video id="my-video" class="video-js vjs-default-skin" controls preload="auto" width="640"
-                height="360"></video>
-        </div>
+        <div class="app">
+            <div class="panel timeline-area">
+                <video id="video" preload="metadata" crossorigin="anonymous"></video>
+                <video id="previewVideo" muted preload="metadata" playsinline crossorigin="anonymous"></video>
 
-        <!-- 2‑B: Interactive timeline → clipStart / clipEnd are set here -->
-        <div id="timeline-container">
-            <!-- (red) current‑time indicator, draggable in content.js -->
-            <div id="current-indicator"></div>
-            <!-- (yellow) clip range. Handles modify start/end -->
-            <div id="clip-range">
-                <div class="handle left-handle"></div>
-                <div class="handle right-handle"></div>
+                <div class="controls-row top-row">
+                    <button id="zoomOutBtn">Zoom -</button>
+                    <button id="zoomInBtn">Zoom +</button>
+                    <button id="importBtn">Import Video</button>
+                    <div class="spacer"></div>
+                    <div class="tag">Ctrl+Wheel to zoom</div>
+                    <div class="tag">Alt+Wheel to pan</div>
+                    <div class="tag">Space to play/pause</div>
+                </div>
+
+                <div id="timeline" class="timeline-container" role="slider" tabindex="0" aria-label="Video timeline"
+                    aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00">
+                    <div class="ticks" id="tickStrip"></div>
+                    <div class="clip-layer" id="clipLayer">
+                        <div class="clip-highlight" id="clipHighlight" title="Drag to move clip"></div>
+                        <div class="clip-handle left" id="clipHandleStart" title="Drag to adjust start"></div>
+                        <div class="clip-handle right" id="clipHandleEnd" title="Drag to adjust end"></div>
+                    </div>
+                    <div class="playhead" id="playhead" title="Drag to scrub"></div>
+                    <div class="hover-preview" id="hoverPreview">
+                        <canvas id="hoverPreviewCanvas" width="180" height="100"></canvas>
+                        <div class="hover-preview-time" id="hoverPreviewTime">0:00</div>
+                    </div>
+                </div>
+
+                <div id="overview" class="overview-container">
+                    <div id="overviewThumb" class="overview-thumb"></div>
+                    <div id="overviewPlayhead" class="overview-playhead"></div>
+                </div>
+
+                <div class="controls-row-bottom">
+                    <div class="row-slot"></div>
+                    <div class="center-controls">
+                        <button id="stepLeftBtn" class="ghost-btn" title="Step 1 frame back">&lt;</button>
+                        <button id="back10Btn" title="Back 10s">&#8630;10</button>
+                        <button id="playPauseCenterBtn" class="play-main" title="Play/Pause">&gt;</button>
+                        <button id="forward10Btn" title="Forward 10s">10&#8631;</button>
+                        <button id="stepRightBtn" class="ghost-btn" title="Step 1 frame forward">&gt;</button>
+                    </div>
+                    <div class="row-slot right">
+                        <button id="playFromClipBtn" disabled>Play from Clip Start</button>
+                        <div class="clip-action">
+                            <button id="clipBtn">✂ Clip</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="time-readout" id="timeReadout">0:00 / 0:00</div>
+
+                <div class="label-row">
+                    <div class="label-slot"></div>
+                    <div class="clip-label" id="clipLabel">Clip inactive</div>
+                    <div class="label-action">
+                        <button id="log-range-btn" class="attach-btn" disabled>Clip video & attach to X.com</button>
+                    </div>
+                </div>
+
+                <div id="status-box" class="status-box" style="display: none;"></div>
+                <div id="myProgress" class="video-progress"></div>
             </div>
         </div>
-
-        <!-- 2‑C: Time labels + Trim action button -->
-        <div class="info-section">
-            <span class="time-display">Clip Start: <span id="startTimeLabel">0</span>s</span>
-            <span class="time-display">Clip End: <span id="endTimeLabel">0</span>s</span>
-            <!-- Triggers trimming + auto-attach to X.com -->
-            <button id="log-range-btn">Clip video & attach to X.com</button>
-            <!-- Real‑time status/progress text from JS (hidden by default) -->
-            <div id="status-box" style="display: none; font-size: 1.1rem; margin-top: 1rem; line-height: 1.4"></div>
-        </div>
-
-        <!-- 2‑D: FFmpeg progress bar (filled via VideoProgress class) -->
-        <div id="myProgress" class="video-progress"></div>
     </div>
 
     <!-- =============================================================
               3. Script pipeline  (order matters!)
               ============================================================= -->
-    <!-- Player library -->
-    <script src="../lib/video/video.min.js"></script>
-
     <!-- FFmpeg WASM (UMD) + thin util wrapper (fetchFile) -->
     <script src="../lib/ffmpeg/ffmpeg/ffmpeg.js"></script>
     <script src="../lib/ffmpeg/util/util.js"></script>

@@ -20,9 +20,14 @@ const isWebCodecsAvailable =
  * @param {Blob} blob - Trimmed video container (mp4) to decode
  * @param {object} opts
  * @param {number} opts.bitrate - target bitrate in bps
+ * @param {(info: { frame: number, totalFrames: number, pct: number }) => void} [opts.onProgress] - optional progress hook
+ * @param {number} [opts.durationSec] - optional duration hint (seconds) for progress calc
  * @returns {Promise<{videoBytes: Uint8Array, framerate: number, width: number, height: number, frameCount: number}>}
  */
-async function encodeWithWebCodecs(blob, { bitrate = 5_000_000 } = {}) {
+async function encodeWithWebCodecs(
+  blob,
+  { bitrate = 5_000_000, onProgress, durationSec } = {}
+) {
   if (!isWebCodecsAvailable) {
     throw new Error("WebCodecs is not available in this browser.");
   }
@@ -72,6 +77,8 @@ async function encodeWithWebCodecs(blob, { bitrate = 5_000_000 } = {}) {
 
   const settingsFps = track.getSettings().frameRate;
   const targetFramerate = Math.max(1, Math.round(settingsFps || 30));
+  const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : durationSec;
+  const totalFrames = duration ? Math.max(1, Math.round(duration * targetFramerate)) : null;
 
   const encodedChunks = [];
   let frameCount = 0;
@@ -93,8 +100,10 @@ async function encodeWithWebCodecs(blob, { bitrate = 5_000_000 } = {}) {
     width: targetDims.width,
     height: targetDims.height,
     bitrate,
+    bitrateMode: 'constant',
     framerate: targetFramerate,
     hardwareAcceleration: "prefer-hardware",
+    latencyMode: 'quality', 
     avc: { format: "annexb" },
   });
 
@@ -107,6 +116,13 @@ async function encodeWithWebCodecs(blob, { bitrate = 5_000_000 } = {}) {
       const { value: frame, done } = await reader.read();
       if (done) break;
       frameCount++;
+      if (typeof onProgress === "function" && totalFrames) {
+        onProgress({
+          frame: frameCount,
+          totalFrames,
+          pct: Math.min(frameCount / totalFrames, 1),
+        });
+      }
       let frameForEncode = frame;
       if (needsResize && resizeCtx && resizeCanvas) {
         resizeCtx.drawImage(frame, 0, 0, targetDims.width, targetDims.height);
@@ -114,6 +130,7 @@ async function encodeWithWebCodecs(blob, { bitrate = 5_000_000 } = {}) {
           timestamp: frame.timestamp,
         });
       }
+
       encoder.encode(frameForEncode);
       frame.close();
       if (frameForEncode !== frame) frameForEncode.close();
@@ -121,6 +138,9 @@ async function encodeWithWebCodecs(blob, { bitrate = 5_000_000 } = {}) {
 
     await encoder.flush();
     encoder.close();
+    if (typeof onProgress === "function" && totalFrames) {
+      onProgress({ frame: totalFrames, totalFrames, pct: 1 });
+    }
   } finally {
     // Cleanup capture artifacts
     track.stop();

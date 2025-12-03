@@ -1,5 +1,5 @@
 // ============================================================================
-// inject-button.js – Adds a ✂︎ "動画をトリム" button to X (Twitter) composer
+// inject-button.js – Adds a ✂︎ "Trim video" button to X (Twitter) composer
 // ---------------------------------------------------------------------------
 // Works as a *content‑script*: runs on every page that matches manifest rule.
 // Key points
@@ -34,7 +34,7 @@
     const btn = tmpl.cloneNode(true);
 
     // A11y / state fixes
-    btn.setAttribute("aria-label", "動画をトリム");
+    btn.setAttribute("aria-label", "Trim video");
     btn.dataset.testid = BTN_ID;
     btn.removeAttribute("disabled");
     btn.setAttribute("aria-disabled", "false");
@@ -77,7 +77,7 @@
             "resizable=yes",
             "scrollbars=yes",
             "width=800",
-            "height=700",
+            "height=800",
             `left=${x - 300}`,
             `top=${y}`,
           ].join(",")
@@ -86,7 +86,10 @@
 
       chrome.runtime.sendMessage({ type: "GET_TAB_ID" }, (res) => {
         if (chrome.runtime.lastError) {
-          console.warn("Failed to get tabId, opening without:", chrome.runtime.lastError);
+          console.warn(
+            "Failed to get tabId, opening without:",
+            chrome.runtime.lastError
+          );
           openTrimmer();
           return;
         }
