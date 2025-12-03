@@ -16,8 +16,7 @@
 // =======================================================================
 
 // Shorthands exposed by util bundle (bundled under lib/ffmpeg/)
-const { FFmpeg } = FFmpegWASM;
-const { fetchFile } = FFmpegUtil;
+const { FFmpeg, FFFSType } = FFmpegWASM;
 
 // ---- 1. Instance & asset URLs --------------------------------------------
 const ffmpeg = new FFmpeg(); // single instance reused across steps
@@ -25,7 +24,9 @@ const ffmpeg = new FFmpeg(); // single instance reused across steps
 // All 3 worker assets must be absolute extension URLs so FFmpeg can import()
 const coreUrl = chrome.runtime.getURL("lib/ffmpeg/core-mt/ffmpeg-core.js");
 const wasmUrl = chrome.runtime.getURL("lib/ffmpeg/core-mt/ffmpeg-core.wasm");
-const workerUrl = chrome.runtime.getURL("lib/ffmpeg/core-mt/ffmpeg-core.worker.js");
+const workerUrl = chrome.runtime.getURL(
+  "lib/ffmpeg/core-mt/ffmpeg-core.worker.js"
+);
 
 // ---- 2. Logging & progress taps ------------------------------------------
 ffmpeg.on("log", ({ message }) => console.log(message));
@@ -45,6 +46,24 @@ ffmpeg.on("progress", ({ time }) => {
       : `time: ${sec.toFixed(2)} s`
   );
 });
+
+// ---------------------------------------------------------------------------
+// withMountedInput() – mount input File via WORKERFS to avoid full in-memory copy
+// Old: fetchFile + writeFile (copies entire File into MEMFS)
+// New: mount(WORKERFS) so FFmpeg reads the File directly without duplicating it
+// ---------------------------------------------------------------------------
+async function withMountedInput(file, callback) {
+  const inputDir = "/input";
+  const inputPath = `${inputDir}/${file.name}`;
+  await ffmpeg.createDir(inputDir);
+  await ffmpeg.mount(FFFSType.WORKERFS, { files: [file] }, inputDir);
+  try {
+    return await callback({ inputDir, inputPath });
+  } finally {
+    await ffmpeg.unmount(inputDir);
+    await ffmpeg.deleteDir(inputDir);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Progress helper shared by both pipelines
@@ -93,22 +112,24 @@ async function trimWithFFmpeg(
   const clipLen = endSec - startSec;
   initProgressBar(clipLen);
   await ensureFFmpegLoaded();
-  await ffmpeg.writeFile(inputFileName, await fetchFile(file));
 
-  const cmd = [
-    "-i",
-    inputFileName,
-    "-ss",
-    `${startSec}`,
-    "-t",
-    `${clipLen}`,
-    "-c",
-    "copy",
-    "-avoid_negative_ts",
-    "make_zero",
-    trimmedFileName,
-  ];
-  await ffmpeg.exec(cmd);
+  await withMountedInput(file, async ({ inputPath }) => {
+    const cmd = [
+      "-ss",
+      `${startSec}`,
+      "-i",
+      inputPath,
+      "-t",
+      `${clipLen}`,
+      "-c",
+      "copy",
+      "-copyinkf",
+      "-avoid_negative_ts",
+      "make_zero",
+      trimmedFileName,
+    ];
+    await ffmpeg.exec(cmd);
+  });
   return ffmpeg.readFile(trimmedFileName);
 }
 
@@ -192,12 +213,14 @@ async function runFFmpeg(
     return;
   }
 
-  // 4) Mount input file inside FFmpeg virtual FS
-  await ffmpeg.writeFile(inputFileName, await fetchFile(file));
-
-  // 5) Execute!
-  console.log(cmd);
-  await ffmpeg.exec(cmd);
+  // 4) Mount input file via WORKERFS and run the command with the mounted path
+  await withMountedInput(file, async ({ inputPath }) => {
+    const updatedCmd = cmd.map((arg) =>
+      arg === inputFileName ? inputPath : arg
+    );
+    console.log(updatedCmd);
+    await ffmpeg.exec(updatedCmd);
+  });
 
   // 6) Retrieve Uint8Array → Blob → return to caller (optional download)
   const data = await ffmpeg.readFile(outputFileName);

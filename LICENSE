@@ -199,7 +199,6 @@ NOTICE
 This distribution bundles the following third-party components,
 each of which is released under the Apache License, Version 2.0:
 
-• **ffmpeg.wasm** — Copyright 2018-2025 ffmpeg.wasm contributors  
-• **video.js**    — Copyright 2012-2025 Brightcove, Inc.
+• **ffmpeg.wasm** — Copyright 2018-2025 ffmpeg.wasm contributors
 
 The complete, unmodified license text for Apache 2.0 is reproduced above.

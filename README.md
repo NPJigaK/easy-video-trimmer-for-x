@@ -1,101 +1,71 @@
-
 # Easy Video Trimmer for X.com
 
-[日本人向けREADME](README_JP.md)
+`Easy Video Trimmer for X.com` is a Chrome extension that recreates the legendary Twitter-era feature that let you trim videos directly in your browser and attach them straight to the X.com compose window.
 
-Easy Video Trimmer for X.com is a Chrome extension aimed at bringing back the simple video trimming experience previously available on Twitter's official site.  
-All video processing still happens entirely offline within your browser: trimming / demuxing / muxing are handled by ffmpeg.wasm, while H.264 video encoding now prefers WebCodecs so Chrome can use hardware acceleration when available (automatically falling back to CPU-only ffmpeg.wasm when not).  
-No longer do you have to open external video editing software every time; you can easily trim and post gameplay highlights or other videos directly within X.com's posting interface.
+## Features
 
-## version
+- Adds a scissors button to the X post composer. You can cut clips in a dedicated trimming UI and attach the resulting MP4 directly to the same compose window. Because you never have to download the processed video file, you don’t end up with extra stray files on your PC.
+- Supports drag handles on the timeline, zoom/pan, hover preview, and keyboard controls—similar to popular desktop editing software—so you can fine-tune clips intuitively.
+- Privacy-first design that works entirely locally. No network requests are made as part of the video processing pipeline.
 
-1.1.0-alpha.1
+## Version
 
-### Why Alpha Version?
+1.1.0.2 (beta)
 
-This extension relies entirely on ffmpeg.wasm for video processing, which is currently subject to performance and technical limitations imposed by browsers (WebAssembly and Chromium).  
-Therefore, we consider it an **Alpha Version (experimental)** until the following major issues are resolved:
+### Why “beta”?
 
-- https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/5
-  - ~~Due to technical constraints in WebAssembly, ffmpeg.wasm cannot utilize GPU hardware encoding, resulting in speeds **about 1/10 that of native (installed) software**. The new WebCodecs path mitigates this on browsers that support hardware encode, but environments without WebCodecs still fall back to CPU-only ffmpeg.wasm.~~
-  - fixed: https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/10
-
-- https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/6
-  - Chromium-based browsers currently limit stable parallel processing (thread count) of ffmpeg.wasm to a maximum of **4 threads**. Specifying 5 or more threads causes processing to hang. We're waiting for fixes from Chromium / ffmpeg.wasm developers.
-
-- https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/7
-  - ~~Currently, videos cannot be automatically attached to the X.com posting form. Due to Chromium's security restrictions, browser extensions (content scripts) have limited access to webpage DOM. Additionally, X.com's strict security policy (CSP) restricts this further. We are researching possible solutions for automatic attachment.~~
-  - fixed: https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/11
+- [#6](https://github.com/NPJigaK/easy-video-trimmer-for-x/issues/6): In Chromium, ffmpeg.wasm’s parallel processing (threads) is limited to **4 threads**. Using 5 or more causes hangs, so the fallback encoder is fixed to 4 threads.
+- Other major issues (encoding without GPU, auto-attaching to the post form) have been resolved by adding WebCodecs support ([#10](https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/10)) and page-side attachment ([#11](https://github.com/NPJigaK/easy-video-trimmer-for-x/pull/11)).
 
 ## 🛠️ Installation
 
 ### Chrome Web Store
 
-_(Coming soon; manual installation currently required)_
+https://chromewebstore.google.com/detail/edpmkohefhijpaoolhkfmlbnbepikmbo?utm_source=item-share-cb
 
-### Manual Installation Steps
+### Manual installation
 
-1. Download or clone and extract this repository.
-2. Open **chrome://extensions/** in Chrome and enable **Developer mode**.
-3. Click **Load unpacked** and select the extracted **easy-video-trimmer-for-x** folder (the directory containing manifest.json).
+1. Download (or clone) this repository and unzip it.
+2. In Chrome, open `chrome://extensions/` and enable **Developer mode**.
+3. Click **Load unpacked**, then select the unzipped `easy-video-trimmer-for-x` folder (the directory that contains `manifest.json`).
 
-## 🚀 Usage
+## 🚀 How to Use
 
-### 1. Open the X.com post creation screen.
+1. Open the X.com compose window.
+2. Click the newly added scissors icon.  
+   ![UI1](doc/image.jpg)
+3. In the popup, drag & drop a video file or select one from your file system.  
+   ![UI2](doc/image2.jpg)
+4. Use the yellow handles to set the start and end positions, then click **Clip video & attach to X.com** to start trimming and encoding.  
+   ![UI3](doc/image3.png)
+5. After encoding finishes, the generated MP4 is automatically attached to the X.com compose form. Only if auto-attach fails will the MP4 be downloaded instead.
 
-### 2. Click the newly added **scissors icon**.
+## ⚙️ Video Specs
 
-![UI example](doc/image.jpg)
+The extension follows the [official media best practices](https://developer.x.com/ja/docs/media/upload-media/uploading-media/media-best-practices). Video encoding uses WebCodecs (hardware H.264 / GPU) whenever available, and falls back to ffmpeg.wasm (software H.264 / CPU) when WebCodecs is not supported. Trimming, audio processing, and MP4 muxing are handled by ffmpeg.wasm.
 
-### 3. Drag & drop or select the video file on the displayed screen.
-
-![UI example](doc/image2.jpg)
-
-#### 3‑1. Select approximate timing using the white seek bar on the video.
-
-#### 3‑2. Drag the yellow handles to precisely adjust the **start** and **end** positions for trimming.
-
-![UI example](doc/image3.jpg)
-
-#### 3‑3. Click the **Clip video & attach to X.com** button.
-
-### 4. When the progress bar reaches 100%, the trimmed video is attached to your X.com post automatically (fallback: download if attachment fails).
-
----
-
-## ⚙️ Video Specifications
-
-In compliance with [official best practices](https://developer.x.com/ja/docs/media/upload-media/uploading-media/media-best-practices):
-
-| Item            | Specification                |
-|-----------------|------------------------------|
-| Minimum length  | 5 seconds                    |
-| Maximum length  | 139 seconds                  |
-| Video codec     | H.264 (`libx264`, High @ 4.1)|
-| Audio codec     | AAC 128 kbps                 |
-| Resolution      | Up to 720p                   |
-| Thread count    | 4 (WASM)                     |
-
-### WebCodecs acceleration (new)
-
-- H.264 encoding prefers WebCodecs (hardware accelerated by Chrome when available).
-- ffmpeg.wasm is still used for trimming, AAC audio, and MP4 mux/remux.
-- If WebCodecs is unavailable or fails, the pipeline automatically falls back to CPU-only ffmpeg.wasm.
-
----
+| Item                     | X.com recommended value                                 | Output from this extension (WebCodecs / ffmpeg.wasm)                                                        | Match status       |
+| ------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------ |
+| Video codec              | H.264 High profile                                      | H.264 High@L4.1                                                                                             | OK                 |
+| Video bitrate            | 5,000 kbps or higher                                    | 5,000 kbps CBR                                                                                              | OK                 |
+| Frame rate               | 30 or 60 FPS, at most 60 FPS                            | Same as source FPS (no explicit upper bound)                                                                | Upper bound needed |
+| Resolution               | 1280x720 / 720x1280 / 720x720 (allowed 32x32–1280x1024) | WebCodecs: keeps original aspect ratio, no upscaling, max 720p on each side<br>ffmpeg.wasm: always 1280x720 | Partial            |
+| Aspect ratio             | Recommended 16:9 or 1:1 (allowed 1:3–3:1)               | WebCodecs: keeps source aspect ratio<br>ffmpeg.wasm: effectively fixed to 16:9                              | Partial            |
+| Pixel format / scan type | YUV 4:2:0, progressive, PAR 1:1                         | 4:2:0, progressive                                                                                          | OK                 |
+| Open GOP                 | Not allowed                                             | Closed GOP                                                                                                  | OK                 |
+| Audio codec / profile    | AAC LC, mono or stereo                                  | AAC-LC stereo                                                                                               | OK                 |
+| Audio bitrate            | 128 kbps or higher                                      | 128 kbps                                                                                                    | OK                 |
+| Duration                 | 0.5–140 seconds                                         | UI enforces 1–139 seconds                                                                                   | OK                 |
+| File size                | Up to 512 MB                                            | No explicit check (at 5 Mbps + 128 kbps, 139 s ≈ 87 MB)                                                     | Not checked        |
 
 ## Contributing
 
-Easy Video Trimmer for X.com is a community-driven project. Bug reports, fixes, feature suggestions, and documentation improvements from anyone are welcome.  
-If you are new to development, please feel free to report any issues or areas for improvement.
-
-You can submit your suggestions through Issues or directly create Pull Requests. Even draft-level contributions are welcome.  
-Detailed contribution guidelines are currently being prepared, but any proposals that maintain ease-of-use and backward compatibility are highly encouraged.
-
-We look forward to your help in improving features and enhancing quality together.
+`Easy Video Trimmer for X.com` is a community-driven project. Bug reports, fixes, feature proposals, and documentation improvements are all very welcome.  
+Even if you’re new to development, feel free to open an Issue or submit a Pull Request (Drafts are totally fine).  
+Detailed contribution guidelines are still a work in progress, but we’d be happy to improve features and overall quality together.
 
 ## 📝 License
 
-Please see [`LICENSE`](LICENSE) for details.
+For details, see [`LICENSE`](LICENSE).
 
-> **Disclaimer:** This extension is an independent open-source project and is not affiliated with X Holdings Corp. in any way.
+> **Disclaimer**: This extension is an independent open-source project and is not affiliated with or endorsed by X Holdings Corp.

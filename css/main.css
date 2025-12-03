@@ -1,18 +1,32 @@
-/* ================================================================
-   1. レイアウトのベース
-   ================================================================ */
-/* ページ全体を中央寄せ・ダークテーマで統一 */
+:root {
+  --bg: #0f1218;
+  --panel: #1a1f2a;
+  --panel-strong: #20283a;
+  --accent: #7fd1ff;
+  --accent-strong: #ffdd66;
+  --text: #e8edf7;
+  --muted: #9aa3b5;
+  --tick: #4b5466;
+  --track: #2a3244;
+  --timeline-height: 78px;
+  --danger: #e0245e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
   font-family: sans-serif;
-  background-color: #15202b; /* 深いネイビー／ブラック (X.com の背景に近い) */
+  background-color: #15202b;
   color: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 100vh;
 }
 
@@ -21,119 +35,16 @@ h1 {
   margin-top: 20px;
 }
 
-/* メイン UI。動画が選択されるまで非表示 */
-#main-extension-container {
-  display: none;
-}
-
 /* ================================================================
-   2. 動画プレイヤー & タイムライン
+   File selection / drag & drop UI (existing flow)
    ================================================================ */
-/* Video.js プレイヤーを中央配置し、幅を 640px に制限 */
-.video-container {
-  max-width: 640px;
-  margin: 20px auto;
+#pre-extension-container {
+  width: 100%;
+  display: contents;
 }
 
-/* --- タイムライン背景 (ズームウィンドウ) ---
-   動画全体ではなく “表示範囲” を示すグレー→ホワイトのグラデ */
-#timeline-container {
-  position: relative;
-  width: 640px; /* プレイヤーと同じ幅 */
-  height: 30px;
-  background: linear-gradient(90deg, #e1e8ed, #f5f8fa);
-  margin: 10px auto;
-  border-radius: 8px;
-  user-select: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* --- クリップ範囲 (黄色枠) ---
-   ドラッグで移動 & リサイズ。handle と合わせて UI で唯一動く要素 */
-#clip-range {
-  position: absolute;
-  top: 0;
-  height: 30px;
-  background-color: rgba(255, 185, 0, 0.3);
-  border: 2px solid #ffad1f;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  box-sizing: border-box;
-  cursor: move;
-}
-
-/* --- 左右ハンドル (ドラッグで範囲を調整) --- */
-.handle {
-  position: absolute;
-  width: 5px;
-  height: 30px;
-  background-color: #ffad1f;
-  top: 0;
-  cursor: ew-resize;
-  border-radius: 2px;
-}
-.handle.left-handle {
-  left: 0;
-}
-.handle.right-handle {
-  right: 0;
-}
-
-/* --- 現在位置 (赤い再生ヘッド) --- */
-#current-indicator {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background-color: #e0245e;
-  z-index: 10;
-}
-#current-indicator::before {
-  content: "";
-  position: absolute;
-  top: -7%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px; /* 直径12pxの丸 */
-  height: 12px;
-  background-color: #e0245e;
-  border-radius: 50%;
-  cursor: pointer; /* ドラッグ出来ることを示す */
-}
-
-/* ================================================================
-   3. クリップ情報 & アクションエリア
-   ================================================================ */
-.info-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  margin-top: 15px;
-}
-.time-display {
-  font-weight: 600;
-}
-
-/* ボタン共通スタイル (X.com の青ボタンを踏襲) */
-button {
-  background-color: #1da1f2;
-  color: #fff;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-button:hover {
-  background-color: #1991da;
-}
-
-/* ================================================================
-   4. ファイル選択 / ドラッグ&ドロップ UI
-   ================================================================ */
 #dropArea {
-  border: 2px dashed #8899a6; /* 薄いグレー */
+  border: 2px dashed #8899a6;
   border-radius: 10px;
   width: 80%;
   max-width: 600px;
@@ -145,16 +56,17 @@ button:hover {
   margin-bottom: 20px;
   transition: border-color 0.3s;
 }
+
 #dropArea.dragover {
-  border-color: #1da1f2; /* ドラッグ時に青枠で強調 */
+  border-color: #1da1f2;
 }
+
 #dropArea p {
   color: #8899a6;
   font-size: 1.2em;
   margin: 0;
 }
 
-/* ファイルアップロード用ダミーボタン (input[type=file] は後述で非表示) */
 .upload-btn {
   display: inline-block;
   padding: 12px 24px;
@@ -167,6 +79,7 @@ button:hover {
   transition: background-color 0.3s;
   text-decoration: none;
 }
+
 .upload-btn:hover {
   background-color: #1a91da;
 }
@@ -178,46 +91,428 @@ button:hover {
   text-align: center;
 }
 
-/* 実際のファイル入力は画面に出さない */
 input[type="file"] {
   display: none;
 }
 
 /* ================================================================
-   5. プレイヤーリセット用クローズボタン
+   Main editing view
    ================================================================ */
+#main-extension-container {
+  display: none;
+  width: 100%;
+  max-width: 1200px;
+  position: relative;
+  padding: 12px;
+}
+
+.app {
+  width: min(1180px, calc(100vw - 32px));
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(127, 209, 255, 0.1);
+  color: var(--accent);
+  font-size: 12px;
+  border: 1px solid rgba(127, 209, 255, 0.25);
+}
+
+.tag {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+}
+
+.kicker {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.4px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+video#video {
+  width: 100%;
+  max-height: 360px;
+  border-radius: 10px;
+  background: #000;
+  border: 1px solid #1f2737;
+}
+
+#previewVideo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  left: -9999px;
+  top: -9999px;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.top-row {
+  margin-bottom: -4px;
+  gap: 6px;
+}
+
+button {
+  background: #263145;
+  color: var(--text);
+  border: 1px solid #30405a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border 0.15s, transform 0.05s;
+}
+
+button:hover {
+  background: #30405a;
+  border-color: #3c5477;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ghost-btn {
+  background: transparent;
+  border-color: #2b3342;
+  color: var(--muted);
+}
+
+.ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.play-main {
+  min-width: 52px;
+  font-weight: 700;
+}
+
+.attach-btn #playFromClipBtn {
+  background: #445066;
+  border-color: #56657f;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 #closeButton {
   position: absolute;
-  top: 10px;
-  right: 0px;
-  border: none;
+  top: 8px;
+  right: 8px;
   background: transparent;
-  font-size: 24px;
-  font-weight: bold;
-  color: #657786;
-  cursor: pointer;
-  transition: color 0.2s ease;
+  border: 1px solid rgba(127, 209, 255, 0.25);
+  color: var(--muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 28px;
   z-index: 9999;
 }
+
 #closeButton:hover {
-  color: #14171a;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-/* ================================================================
-   6. FFmpeg 進捗バー
-   ================================================================ */
+/* Timeline */
+.timeline-area {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.timeline-container {
+  position: relative;
+  height: var(--timeline-height);
+  border-radius: 10px;
+  background: var(--track);
+  border: 1px solid #1f2737;
+  overflow: hidden;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  user-select: none;
+}
+
+.ticks,
+.clip-layer,
+.playhead {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+}
+
+.tick {
+  position: absolute;
+  bottom: 8px;
+  width: 1px;
+  background: var(--tick);
+  opacity: 0.7;
+}
+
+.tick.major {
+  height: 16px;
+  background: #5f6c83;
+}
+
+.tick.minor {
+  height: 10px;
+  opacity: 0.4;
+}
+
+.tick.major span {
+  position: absolute;
+  bottom: 22px;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 11px;
+  background: rgba(15, 18, 24, 0.8);
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(48, 64, 90, 0.6);
+}
+
+.clip-highlight {
+  position: absolute;
+  top: 22px;
+  height: calc(100% - 44px);
+  background: rgba(255, 221, 102, 0.28);
+  border: 1px solid rgba(255, 221, 102, 0.9);
+  border-radius: 6px;
+  pointer-events: auto;
+  box-shadow: 0 0 0 2px rgba(255, 221, 102, 0.18);
+  cursor: grab;
+}
+
+.clip-handle {
+  position: absolute;
+  top: 18px;
+  width: 12px;
+  height: calc(100% - 36px);
+  background: linear-gradient(180deg, #ffe8a3, #e6b44b);
+  border: 1px solid #f6d05c;
+  border-radius: 4px;
+  cursor: ew-resize;
+  pointer-events: auto;
+  box-shadow: 0 0 0 2px rgba(15, 18, 24, 0.7);
+}
+
+.clip-handle.left,
+.clip-handle.right {
+  transform: translateX(-50%);
+}
+
+.playhead {
+  position: absolute;
+  top: 6px;
+  bottom: 12px;
+  width: 2px;
+  background: #fff;
+  transform: translateX(-1px);
+  pointer-events: auto;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
+}
+
+.playhead::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -7px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 10px solid #fff;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+.overview-container {
+  position: relative;
+  height: 14px;
+  border-radius: 6px;
+  background: #0f141e;
+  border: 1px solid #1e2634;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.overview-thumb {
+  position: absolute;
+  top: 1px;
+  height: 10px;
+  background: linear-gradient(180deg, #737a86, #5d6672);
+  border-radius: 5px;
+  border: 1px solid #8c939e;
+  cursor: grab;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.overview-playhead {
+  position: absolute;
+  top: 2px;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* Controls */
+.controls-row-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.row-slot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-slot.right {
+  justify-content: flex-end;
+}
+
+.center-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin: 0 auto;
+}
+
+.center-controls button {
+  min-width: 38px;
+  padding: 8px 10px;
+}
+
+.time-readout {
+  text-align: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.clip-action {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
+.clip-label {
+  text-align: center;
+  color: var(--text);
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.label-slot {
+  flex: 1;
+}
+
+.label-action {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Hover preview */
+.hover-preview {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #0f141e;
+  border: 1px solid #1e2634;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+  display: none;
+  z-index: 999;
+  width: 220px;
+  pointer-events: none;
+}
+
+.hover-preview canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  background: #000;
+  position: relative;
+  z-index: 1;
+}
+
+.hover-preview-time {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Progress + status */
+.status-box {
+  margin-top: 10px;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
 .video-progress {
-  /* CSS 変数でカスタマイズ性を確保 */
   --progress-height: 8px;
-  --progress-bg: #1e1e1e; /* ダークグレー背景 */
-  --progress-gradient: linear-gradient(
-    90deg,
-    #1da1f2 0%,
-    #7b3eff 100%
-  ); /* X.comブルー→編集ソフト紫 */
+  --progress-bg: #0f141e;
+  --progress-gradient: linear-gradient(90deg, #2c8edb 0%, #ffdd66 100%);
   --progress-radius: 4px;
   --progress-transition: width 0.1s ease-out;
-
   position: relative;
   width: 100%;
   height: var(--progress-height);
@@ -225,17 +520,17 @@ input[type="file"] {
   border-radius: var(--progress-radius);
   overflow: hidden;
 }
-/* 実際に伸びるバー */
+
 .video-progress__bar {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
-  width: 0; /* JS で動的に更新 */
+  width: 0;
   background: var(--progress-gradient);
   transition: var(--progress-transition);
 }
-/* パーセンテージ表示 */
+
 .video-progress__info {
   position: absolute;
   top: calc(var(--progress-height) + 6px);
@@ -246,9 +541,7 @@ input[type="file"] {
   white-space: nowrap;
 }
 
-/* ================================================================
-   7. 汎用インジケータ
-   ================================================================ */
+/* Spinner */
 .spinner {
   display: inline-block;
   width: 1em;
@@ -259,6 +552,7 @@ input[type="file"] {
   animation: spin 0.8s linear infinite;
   vertical-align: middle;
 }
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
